@@ -69,9 +69,7 @@ cargo build --release
 
 `install.sh` installs the binary, the KRunner desktop file and the
 systemd user unit, writes a default config if none exists, and enables
-the service. Do not run this and the Python version at the same time:
-both own the bus name `org.kde.krunner.bitwarden`. `install.sh` warns
-if the Python service is enabled.
+the service.
 
 Two things worth checking on a fresh install:
 
@@ -89,12 +87,11 @@ Two things worth checking on a fresh install:
 ./uninstall.sh
 ```
 
-The config file is left in place (it is shared with the Python version).
+The config file is left in place.
 
 ## Configuration
 
-`~/.config/krunner-bitwarden/config.ini`, shared with the Python
-version, so presets and paths carry over:
+`~/.config/krunner-bitwarden/config.ini`:
 
 ```ini
 [bitwarden]
