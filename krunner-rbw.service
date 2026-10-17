@@ -1,0 +1,14 @@
+[Unit]
+Description=KRunner Bitwarden runner (rbw backend, Rust)
+After=dbus.service
+PartOf=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.kde.krunner.bitwarden
+ExecStart=%h/.local/share/krunner-rbw/krunner-rbw
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

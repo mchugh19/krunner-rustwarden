@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Service
+X-KDE-ServiceTypes=Plasma/Runner
+Name=Bitwarden (rbw)
+Comment=Search Bitwarden vault via rbw and copy credentials
+Icon=password-vault
+X-KDE-PluginInfo-Name=bitwarden
+X-KDE-PluginInfo-Version=0.1.0
+X-Plasma-API=DBus
+X-Plasma-DBusRunner-Service=org.kde.krunner.bitwarden
+X-Plasma-DBusRunner-Path=/runner
+X-KDE-ConfigModule=kcm_plasmasearch
