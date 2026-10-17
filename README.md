@@ -82,6 +82,12 @@ address, and it opens that address. Other URIs are ignored,
 including the `androidapp://` links Bitwarden stores for Android
 autofill.
 
+Copy TOTP is offered only on entries that have a TOTP. rbw's list
+data does not say which entries those are, so the first time an
+entry appears in results the runner checks with `rbw code`,
+discarding the code it gets back, and remembers the answer until
+the next sync.
+
 Secrets (passwords, TOTP codes, generated passwords) are copied
 with KDE's password hint attached, so Klipper keeps them out of its
 history, and they are cleared from the clipboard after the
