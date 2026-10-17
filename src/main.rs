@@ -61,6 +61,9 @@ pub struct Runner {
     /// Item UUID -> display data from the last Match. Holds no secrets:
     /// rbw list returns no passwords, so Run fetches secrets at action time.
     cache: Mutex<HashMap<String, CachedItem>>,
+    /// Item UUID -> whether the entry has a TOTP, probed once per entry
+    /// (see has_totp) and forgotten on sync.
+    totp_presence: Mutex<HashMap<String, bool>>,
 }
 
 fn props(subtext: &str, actions: Option<Vec<String>>) -> HashMap<String, Value<'static>> {
@@ -102,7 +105,27 @@ impl Runner {
             cfg,
             rbw,
             cache: Mutex::new(HashMap::new()),
+            totp_presence: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Whether an entry has a TOTP. rbw list does not say, so the
+    /// first time an entry surfaces the runner probes with rbw code
+    /// and discards the generated code unread: a code comes back only
+    /// when the entry has a TOTP seed, an error (empty output) when
+    /// it has none. The answer is cached per entry until the next
+    /// sync, so the probe costs one rbw call per entry per session,
+    /// not one per keystroke.
+    fn has_totp(&self, item_id: &str) -> bool {
+        if let Some(present) = self.totp_presence.lock().unwrap().get(item_id) {
+            return *present;
+        }
+        let present = !self.rbw.totp(item_id).trim().is_empty();
+        self.totp_presence
+            .lock()
+            .unwrap()
+            .insert(item_id.to_string(), present);
+        present
     }
 
     fn copy(&self, text: &str, secret: bool) {
@@ -174,17 +197,18 @@ impl Runner {
             // Per-match actions. A note has no password, username,
             // TOTP or URL to offer, so it always gets exactly the web
             // vault action, regardless of the webvault_action flag.
-            // A login gets the copy actions, Open URL only when it
-            // has an https address, and the web vault only when that
-            // flag is on. Without the property a match would inherit
-            // every advertised action.
+            // A login gets Copy Username, Copy TOTP only when the
+            // entry has a TOTP, Open URL only when it has an https
+            // address, and the web vault only when that flag is on.
+            // Without the property a match would inherit every
+            // advertised action.
             let actions = Some(if item.is_note {
                 vec![ACTION_OPEN_WEBVAULT.to_string()]
             } else {
-                let mut ids = vec![
-                    ACTION_COPY_USERNAME.to_string(),
-                    ACTION_COPY_TOTP.to_string(),
-                ];
+                let mut ids = vec![ACTION_COPY_USERNAME.to_string()];
+                if self.has_totp(&item.id) {
+                    ids.push(ACTION_COPY_TOTP.to_string());
+                }
                 if Self::web_url(&item.uris).is_some() {
                     ids.push(ACTION_OPEN_URL.to_string());
                 }
@@ -235,6 +259,9 @@ impl Runner {
         } else if cmd == "unlock" {
             self.rbw.unlock();
         } else if cmd == "sync" {
+            // A sync can add or remove TOTPs, so forget the probed
+            // answers and let them be re-probed on the next search.
+            self.totp_presence.lock().unwrap().clear();
             let rbw = Rbw::new(&self.cfg);
             std::thread::spawn(move || rbw.sync());
         } else if cmd == "stop_agent" {
