@@ -44,6 +44,13 @@ pub struct Config {
     /// Seconds after which a copied secret is cleared from the clipboard
     /// (only if the clipboard still holds that secret). 0 disables clearing.
     pub clipboard_clear_seconds: u64,
+    /// Offer an "Open in Web Vault" action on entry matches. The vault
+    /// address is not configured here: it comes from rbw's own ui_url /
+    /// base_url settings at action time.
+    pub webvault_action: bool,
+    /// Include secure note entries in search results. Running one copies
+    /// the note text (fetched from rbw at action time, like a password).
+    pub show_secure_notes: bool,
     pub presets: Vec<Preset>,
 }
 
@@ -53,6 +60,8 @@ impl Default for Config {
             rbw_exe: "rbw".to_string(),
             rbw_profile: String::new(),
             clipboard_clear_seconds: 30,
+            webvault_action: false,
+            show_secure_notes: false,
             presets: Vec::new(),
         }
     }
@@ -82,6 +91,16 @@ rbw_profile =
 # Seconds after which a copied password/TOTP is cleared from the clipboard,
 # if the clipboard still holds that exact text. 0 disables auto-clearing.
 clipboard_clear_seconds = 30
+
+# Add an Open in Web Vault action to entry matches. It opens the item's
+# page in the web vault, which is where an entry's notes can be read. The
+# vault address comes from rbw's own ui_url / base_url settings
+# (see `rbw config show`); there is no separate address to configure here.
+webvault_action = false
+
+# Include secure note entries in search results. Running a note entry
+# copies its text, fetched from rbw at that moment like a password.
+show_secure_notes = false
 
 [generator.default]
 type = password
@@ -184,6 +203,8 @@ pub fn load() -> Config {
     }
     cfg.rbw_profile = bw.get("rbw_profile").cloned().unwrap_or_default();
     cfg.clipboard_clear_seconds = get_u64(bw, "clipboard_clear_seconds", 30);
+    cfg.webvault_action = get_bool(bw, "webvault_action", false);
+    cfg.show_secure_notes = get_bool(bw, "show_secure_notes", false);
 
     for section in &ini.order {
         let Some(label) = section.strip_prefix("generator.") else {

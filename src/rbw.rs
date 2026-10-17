@@ -16,6 +16,7 @@ use crate::config::Config;
 pub struct Rbw {
     exe: String,
     profile: String,
+    include_notes: bool,
     not_found: AtomicBool,
 }
 
@@ -31,6 +32,9 @@ pub struct Item {
     pub name: String,
     pub username: String,
     pub uris: Vec<String>,
+    /// True for secure note entries (rbw type "Note"), which list_items
+    /// only returns when the show_secure_notes config flag is on.
+    pub is_note: bool,
 }
 
 /// rbw entry types that are not logins. A missing or unknown type is kept,
@@ -47,6 +51,10 @@ const NON_LOGIN_TYPES: &[&str] = &[
     "ssh",
 ];
 
+/// Spellings of the secure note type. rbw's list output uses "Note"; the
+/// others are accepted so a rename upstream cannot silently drop notes.
+const NOTE_TYPES: &[&str] = &["note", "securenote", "secure note"];
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum VaultState {
     Unlocked,
@@ -59,6 +67,7 @@ impl Rbw {
         Rbw {
             exe: cfg.rbw_exe.clone(),
             profile: cfg.rbw_profile.clone(),
+            include_notes: cfg.show_secure_notes,
             not_found: AtomicBool::new(false),
         }
     }
@@ -179,10 +188,11 @@ impl Rbw {
         }
     }
 
-    /// All login entries from `rbw list --raw`. Raw entries look like:
+    /// All login entries from `rbw list --raw`, plus secure notes when
+    /// the config enables them. Raw entries look like:
     /// {"id": "<uuid>", "name": "...", "user": "..." | null,
     ///  "folder": "..." | null, "uris": ["https://..."] | null,
-    ///  "type": "login" | null}
+    ///  "type": "Login" | "Note" | ... | null}
     /// Only call when the vault is unlocked (see vault_state gating).
     pub fn list_items(&self) -> Vec<Item> {
         let out = match self.run(&["list", "--raw"], Duration::from_secs(10)) {
@@ -214,7 +224,10 @@ impl Rbw {
                 .unwrap_or_default()
                 .trim()
                 .to_lowercase();
-            if NON_LOGIN_TYPES.contains(&entry_type.as_str()) {
+            let is_note = NOTE_TYPES.contains(&entry_type.as_str());
+            if NON_LOGIN_TYPES.contains(&entry_type.as_str())
+                && !(is_note && self.include_notes)
+            {
                 continue;
             }
             let mut uris = Vec::new();
@@ -246,6 +259,7 @@ impl Rbw {
                     .unwrap_or_default()
                     .to_string(),
                 uris,
+                is_note,
             });
         }
         items
@@ -261,6 +275,44 @@ impl Rbw {
 
     pub fn totp(&self, item_id: &str) -> String {
         self.output(&["code", item_id], Duration::from_secs(10))
+    }
+
+    /// The entry's notes field, fetched at action time like a password.
+    /// Works for login entries with notes and for secure note entries.
+    pub fn notes(&self, item_id: &str) -> String {
+        self.get_field(item_id, "notes")
+    }
+
+    /// Deep link to this item in the web vault:
+    /// <vault>/#/vault?itemId=<uuid>. The vault base mirrors rbw's own
+    /// ui_url() resolution, read live from `rbw config show`: ui_url if
+    /// set, else base_url (the EU API host maps to the EU vault host),
+    /// else the Bitwarden cloud vault. None if the config cannot be read,
+    /// so a misconfigured setup fails visibly instead of opening the
+    /// wrong vault.
+    pub fn webvault_item_url(&self, item_id: &str) -> Option<String> {
+        let out = self.output(&["config", "show"], Duration::from_secs(5));
+        let parsed: Json = serde_json::from_str(&out).ok()?;
+        let clean = |s: &str| s.trim_end_matches('/').to_string();
+        let base = match parsed
+            .get("ui_url")
+            .and_then(Json::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            Some(ui) => clean(ui),
+            None => match parsed
+                .get("base_url")
+                .and_then(Json::as_str)
+                .filter(|s| !s.is_empty())
+            {
+                Some(b) if clean(b) == "https://api.bitwarden.eu" => {
+                    "https://vault.bitwarden.eu".to_string()
+                }
+                Some(b) => clean(b),
+                None => "https://vault.bitwarden.com".to_string(),
+            },
+        };
+        Some(format!("{base}/#/vault?itemId={item_id}"))
     }
 
     pub fn lock(&self) {

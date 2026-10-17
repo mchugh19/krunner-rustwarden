@@ -9,6 +9,8 @@
 //!   * copy password (default), copy username, copy TOTP, open URL
 //!   * lock / unlock / sync / stop-agent matches
 //!   * password generation from configurable presets (printed, not saved)
+//!   * optional: an "Open in Web Vault" action per entry, and secure
+//!     note entries in the results (both off by default; see config.rs)
 //!
 //! Secret copies own a Wayland selection carrying KDE's
 //! x-kde-passwordManagerHint where possible, so Klipper keeps them out
@@ -41,6 +43,7 @@ const CATEGORY_HIGHEST: i32 = 100;
 const ACTION_COPY_USERNAME: &str = "copy_username";
 const ACTION_COPY_TOTP: &str = "copy_totp";
 const ACTION_OPEN_URL: &str = "open_url";
+const ACTION_OPEN_WEBVAULT: &str = "open_webvault";
 
 type MatchResult = (String, String, String, i32, f64, HashMap<String, Value<'static>>);
 type ActionResult = (String, String, String);
@@ -49,6 +52,7 @@ type ActionResult = (String, String, String);
 struct CachedItem {
     username: String,
     uris: Vec<String>,
+    is_note: bool,
 }
 
 pub struct Runner {
@@ -97,6 +101,12 @@ impl Runner {
         clipboard::copy(text, self.cfg.clipboard_clear_seconds, secret);
     }
 
+    fn open_url(&self, url: &str) {
+        if !url.is_empty() {
+            let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+        }
+    }
+
     fn search_credentials(&self, tokens: &[String]) -> Vec<MatchResult> {
         let mut matches = Vec::new();
         if tokens.is_empty() {
@@ -123,9 +133,12 @@ impl Runner {
                 CachedItem {
                     username: item.username.clone(),
                     uris: item.uris.clone(),
+                    is_note: item.is_note,
                 },
             );
-            let subtext = if item.username.is_empty() {
+            let subtext = if item.is_note {
+                "Secure note"
+            } else if item.username.is_empty() {
                 "no username"
             } else {
                 &item.username
@@ -233,7 +246,7 @@ impl Runner {
 impl Runner {
     #[zbus(name = "Actions")]
     fn actions(&self) -> Vec<ActionResult> {
-        vec![
+        let mut actions = vec![
             (
                 ACTION_COPY_USERNAME.to_string(),
                 "Copy Username".to_string(),
@@ -249,7 +262,15 @@ impl Runner {
                 "Open URL".to_string(),
                 "internet-web-browser".to_string(),
             ),
-        ]
+        ];
+        if self.cfg.webvault_action {
+            actions.push((
+                ACTION_OPEN_WEBVAULT.to_string(),
+                "Open in Web Vault".to_string(),
+                "internet-web-browser".to_string(),
+            ));
+        }
+        actions
     }
 
     #[zbus(name = "Match")]
@@ -388,10 +409,18 @@ impl Runner {
                     .collect()
             };
             if let Some(url) = uris.first() {
-                if !url.is_empty() {
-                    let _ = std::process::Command::new("xdg-open").arg(url).spawn();
-                }
+                self.open_url(url);
             }
+        } else if action_id == ACTION_OPEN_WEBVAULT {
+            match self.rbw.webvault_item_url(match_id) {
+                Some(url) => self.open_url(&url),
+                None => eprintln!("[bitwarden] Could not resolve web vault URL (rbw config show failed)"),
+            }
+        } else if cached.is_note {
+            // Default for a secure note entry: copy the note text, fetched
+            // from rbw at action time and handled as a secret.
+            let note = self.rbw.notes(match_id);
+            self.copy(&note, true);
         } else {
             // Default: copy password, fetched from rbw at action time.
             let password = self.rbw.password(match_id);
