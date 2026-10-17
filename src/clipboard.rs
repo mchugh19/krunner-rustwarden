@@ -102,15 +102,33 @@ fn tool_set_empty() {
     let _ = tool_copy("");
 }
 
-/// Copy text to the clipboard. When clear_seconds > 0, a detached thread
-/// clears the clipboard after that delay, but only if the clipboard still
-/// holds exactly this text (the user may have copied something else since).
-pub fn copy(text: &str, clear_seconds: u64) {
+/// Copy text to the clipboard.
+///
+/// Secret copies (passwords, TOTP codes, generated passwords) are first
+/// offered through our own Wayland selection carrying
+/// x-kde-passwordManagerHint, so Klipper keeps them out of its history
+/// (see selection.rs). When that route is unavailable, and for
+/// non-secret copies (usernames), the Klipper / external-tool chain
+/// below is used. When clear_seconds > 0 on the fallback chain, a
+/// detached thread clears the clipboard after that delay, but only if
+/// the clipboard still holds exactly this text.
+pub fn copy(text: &str, clear_seconds: u64, secret: bool) {
     if text.is_empty() {
         return;
     }
+    if secret {
+        let clear_after = if clear_seconds > 0 {
+            Some(std::time::Duration::from_secs(clear_seconds))
+        } else {
+            None
+        };
+        if crate::selection::set_secret(text, clear_after) {
+            return;
+        }
+        // Fall through: better an unmarked copy than none at all.
+    }
     if klipper_set(text).is_err() && !tool_copy(text) {
-        eprintln!("[bitwarden] No clipboard route worked (Klipper, wl-copy, xclip, xsel)");
+        eprintln!("[bitwarden] No clipboard route worked (selection, Klipper, wl-copy, xclip, xsel)");
         return;
     }
     if clear_seconds > 0 {

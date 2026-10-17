@@ -18,6 +18,7 @@
 mod clipboard;
 mod config;
 mod rbw;
+mod selection;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -93,8 +94,8 @@ impl Runner {
         }
     }
 
-    fn copy(&self, text: &str) {
-        clipboard::copy(text, self.cfg.clipboard_clear_seconds);
+    fn copy(&self, text: &str, secret: bool) {
+        clipboard::copy(text, self.cfg.clipboard_clear_seconds, secret);
     }
 
     fn search_credentials(&self, tokens: &[String]) -> Vec<MatchResult> {
@@ -181,7 +182,7 @@ impl Runner {
                 Ok(v) => {
                     if let Some(preset) = self.preset_from_json(&v) {
                         if let Some(generated) = self.rbw.generate(&preset) {
-                            self.copy(&generated);
+                            self.copy(&generated, true);
                         }
                     }
                 }
@@ -386,10 +387,10 @@ impl Runner {
             } else {
                 self.rbw.get_field(match_id, "username")
             };
-            self.copy(&username);
+            self.copy(&username, false);
         } else if action_id == ACTION_COPY_TOTP {
             let totp = self.rbw.totp(match_id);
-            self.copy(&totp);
+            self.copy(&totp, true);
         } else if action_id == ACTION_OPEN_URL {
             let uris = if !cached.uris.is_empty() {
                 cached.uris
@@ -408,7 +409,7 @@ impl Runner {
         } else {
             // Default: copy password, fetched from rbw at action time.
             let password = self.rbw.password(match_id);
-            self.copy(&password);
+            self.copy(&password, true);
         }
     }
 }
