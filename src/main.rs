@@ -115,6 +115,17 @@ impl Runner {
         }
     }
 
+    /// The first https URI among an entry's URIs, if it has one.
+    /// Entries also carry non-web URIs such as androidapp:// app
+    /// links, which a browser cannot open, so the Open URL action is
+    /// offered only when a web address exists, and it opens that
+    /// address rather than the first URI in the list.
+    fn web_url(uris: &[String]) -> Option<&str> {
+        uris.iter()
+            .map(|u| u.trim())
+            .find(|u| u.to_ascii_lowercase().starts_with("https://"))
+    }
+
     fn open_in_webvault(&self, match_id: &str) {
         match self.rbw.webvault_item_url(match_id) {
             Some(url) => self.open_url(&url),
@@ -163,17 +174,20 @@ impl Runner {
             // Per-match actions. A note has no password, username,
             // TOTP or URL to offer, so it always gets exactly the web
             // vault action, regardless of the webvault_action flag.
-            // A login gets the copy/open actions, plus the web vault
-            // only when that flag is on. Without the property a match
-            // would inherit every advertised action.
+            // A login gets the copy actions, Open URL only when it
+            // has an https address, and the web vault only when that
+            // flag is on. Without the property a match would inherit
+            // every advertised action.
             let actions = Some(if item.is_note {
                 vec![ACTION_OPEN_WEBVAULT.to_string()]
             } else {
                 let mut ids = vec![
                     ACTION_COPY_USERNAME.to_string(),
                     ACTION_COPY_TOTP.to_string(),
-                    ACTION_OPEN_URL.to_string(),
                 ];
+                if Self::web_url(&item.uris).is_some() {
+                    ids.push(ACTION_OPEN_URL.to_string());
+                }
                 if self.cfg.webvault_action {
                     ids.push(ACTION_OPEN_WEBVAULT.to_string());
                 }
@@ -454,7 +468,7 @@ impl Runner {
                     .map(|s| s.to_string())
                     .collect()
             };
-            if let Some(url) = uris.first() {
+            if let Some(url) = Self::web_url(&uris) {
                 self.open_url(url);
             }
         } else if action_id == ACTION_OPEN_WEBVAULT {
