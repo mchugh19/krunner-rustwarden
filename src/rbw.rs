@@ -277,12 +277,6 @@ impl Rbw {
         self.output(&["code", item_id], Duration::from_secs(10))
     }
 
-    /// The entry's notes field, fetched at action time like a password.
-    /// Works for login entries with notes and for secure note entries.
-    pub fn notes(&self, item_id: &str) -> String {
-        self.get_field(item_id, "notes")
-    }
-
     /// Deep link to this item in the web vault:
     /// <vault>/#/vault?itemId=<uuid>. The vault base mirrors rbw's own
     /// ui_url() resolution, read live from `rbw config show`: ui_url if

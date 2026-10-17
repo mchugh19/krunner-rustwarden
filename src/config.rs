@@ -48,8 +48,8 @@ pub struct Config {
     /// address is not configured here: it comes from rbw's own ui_url /
     /// base_url settings at action time.
     pub webvault_action: bool,
-    /// Include secure note entries in search results. Running one copies
-    /// the note text (fetched from rbw at action time, like a password).
+    /// Include secure note entries in search results. Running one opens
+    /// the entry in the web vault; note text is never copied.
     pub show_secure_notes: bool,
     pub presets: Vec<Preset>,
 }
@@ -99,7 +99,7 @@ clipboard_clear_seconds = 30
 webvault_action = false
 
 # Include secure note entries in search results. Running a note entry
-# copies its text, fetched from rbw at that moment like a password.
+# opens it in the web vault; note text is never copied.
 show_secure_notes = false
 
 [generator.default]

@@ -107,6 +107,15 @@ impl Runner {
         }
     }
 
+    fn open_in_webvault(&self, match_id: &str) {
+        match self.rbw.webvault_item_url(match_id) {
+            Some(url) => self.open_url(&url),
+            None => eprintln!(
+                "[bitwarden] Could not resolve web vault URL (rbw config show failed)"
+            ),
+        }
+    }
+
     fn search_credentials(&self, tokens: &[String]) -> Vec<MatchResult> {
         let mut matches = Vec::new();
         if tokens.is_empty() {
@@ -412,15 +421,13 @@ impl Runner {
                 self.open_url(url);
             }
         } else if action_id == ACTION_OPEN_WEBVAULT {
-            match self.rbw.webvault_item_url(match_id) {
-                Some(url) => self.open_url(&url),
-                None => eprintln!("[bitwarden] Could not resolve web vault URL (rbw config show failed)"),
-            }
+            self.open_in_webvault(match_id);
         } else if cached.is_note {
-            // Default for a secure note entry: copy the note text, fetched
-            // from rbw at action time and handled as a secret.
-            let note = self.rbw.notes(match_id);
-            self.copy(&note, true);
+            // Secure notes are never copied: the text is free-form, can
+            // be long and can carry many fields, so the clipboard is a
+            // poor fit. Opening the item in the web vault is the useful
+            // action, and it is the note's default run.
+            self.open_in_webvault(match_id);
         } else {
             // Default: copy password, fetched from rbw at action time.
             let password = self.rbw.password(match_id);
