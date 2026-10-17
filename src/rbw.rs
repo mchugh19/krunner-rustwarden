@@ -1,8 +1,8 @@
 //! rbw subprocess layer.
 //!
-//! Every vault operation is a short-lived `rbw` call, mirroring the Python
-//! rbw port of this runner. rbw has no HTTP API; its agent (rbw-agent)
-//! holds the vault keys in memory and prompts via pinentry on unlock.
+//! Every vault operation is a short-lived `rbw` call. rbw has no HTTP
+//! API; its agent (rbw-agent) holds the vault keys in memory and prompts
+//! via pinentry on unlock.
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
@@ -307,11 +307,11 @@ impl Rbw {
     /// Generate a password with rbw. No entry name is passed, so rbw prints
     /// the result instead of saving it to the vault.
     ///
-    /// Preset mapping, and its limits (rbw has fewer knobs than bw):
-    ///   passphrase preset   -> rbw generate <words> --diceware
-    ///   numbers-only preset -> rbw generate <length> --only-numbers
-    ///   special = false     -> --no-symbols
-    ///   special = true      -> no flag (symbols included)
+    /// Presets map directly onto rbw's flags:
+    ///   passphrase preset  -> rbw generate <words> --diceware
+    ///   numbers_only       -> --only-numbers
+    ///   symbols = false    -> --no-symbols
+    ///   nonconfusables     -> --nonconfusables
     pub fn generate(&self, preset: &crate::config::Preset) -> Option<String> {
         use crate::config::PresetKind;
         let args: Vec<String> = match preset.kind {
@@ -322,12 +322,15 @@ impl Rbw {
             ],
             PresetKind::Password => {
                 let mut a = vec!["generate".into(), preset.length.to_string()];
-                let numbers_only =
-                    preset.numbers && !preset.uppercase && !preset.lowercase && !preset.special;
-                if numbers_only {
+                if preset.numbers_only {
                     a.push("--only-numbers".into());
-                } else if !preset.special {
-                    a.push("--no-symbols".into());
+                } else {
+                    if !preset.symbols {
+                        a.push("--no-symbols".into());
+                    }
+                    if preset.nonconfusables {
+                        a.push("--nonconfusables".into());
+                    }
                 }
                 a
             }

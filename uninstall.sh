@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove krunner-rustwarden. The shared config file is left in place.
+# Remove krunner-rustwarden. The config file is left in place.
 set -euo pipefail
 
 systemctl --user disable --now krunner-rustwarden.service 2>/dev/null || true
@@ -10,4 +10,4 @@ rm -rf "$HOME/.local/share/krunner-rustwarden"
 
 systemctl --user daemon-reload
 
-echo "Removed krunner-rustwarden. Config kept at ~/.config/krunner-bitwarden/config.ini"
+echo "Removed krunner-rustwarden. Config kept at ~/.config/krunner-rustwarden/config.ini"

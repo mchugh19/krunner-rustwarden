@@ -1,8 +1,8 @@
 //! Configuration for krunner-rustwarden.
 //!
-//! The config file is shared with the Python (bw-serve/rbw) version of this
-//! runner: `~/.config/krunner-bitwarden/config.ini`. Installing either
-//! implementation picks up the same rbw settings and generator presets.
+//! The config file lives at `~/.config/krunner-rustwarden/config.ini`.
+//! Generator presets are expressed in rbw's own terms, so every key maps
+//! to a real `rbw generate` flag and nothing is silently ignored.
 //!
 //! Format is INI. Parsing is deliberately minimal (sections, `key = value`,
 //! `#` / `;` comments), which covers everything the config file uses and
@@ -22,17 +22,17 @@ pub enum PresetKind {
 pub struct Preset {
     pub label: String,
     pub kind: PresetKind,
+    /// Password presets: number of characters.
     pub length: u32,
+    /// Passphrase presets: number of diceware words.
     pub words: u32,
-    pub uppercase: bool,
-    pub lowercase: bool,
-    pub numbers: bool,
-    pub special: bool,
-    // Passphrase-only fields. Parsed for config compatibility; rbw's
-    // diceware generator has no equivalent for them.
-    pub separator: String,
-    pub capitalize: bool,
-    pub include_number: bool,
+    /// Password presets: include symbols. False passes --no-symbols.
+    pub symbols: bool,
+    /// Password presets: digits only. Passes --only-numbers.
+    pub numbers_only: bool,
+    /// Password presets: exclude look-alike characters. Passes
+    /// --nonconfusables.
+    pub nonconfusables: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +64,7 @@ pub fn config_dir() -> PathBuf {
         .unwrap_or_else(|| {
             PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config")
         });
-    base.join("krunner-bitwarden")
+    base.join("krunner-rustwarden")
 }
 
 pub fn config_file() -> PathBuf {
@@ -86,33 +86,21 @@ clipboard_clear_seconds = 30
 [generator.default]
 type = password
 length = 16
-uppercase = true
-lowercase = true
-numbers = true
-special = false
+symbols = false
 
 [generator.strong]
 type = password
 length = 24
-uppercase = true
-lowercase = true
-numbers = true
-special = true
+symbols = true
 
 [generator.passphrase]
 type = passphrase
 words = 3
-separator = -
-capitalize = false
-include_number = false
 
 [generator.pin]
 type = password
 length = 6
-uppercase = false
-lowercase = false
-numbers = true
-special = false
+numbers_only = true
 ";
 
 /// A tiny INI reader: section name -> (key -> value), keys lowercased,
@@ -187,20 +175,12 @@ pub fn load() -> Config {
     let empty = HashMap::new();
     let bw = ini.sections.get("bitwarden").unwrap_or(&empty);
 
-    // Legacy alias from the bw-serve version of the config: the literal
-    // default "bw" in old files means "unset", not the rbw path.
-    let mut legacy_exe = bw.get("bw_executable_path").cloned().unwrap_or_default();
-    if legacy_exe == "bw" {
-        legacy_exe.clear();
-    }
     let rbw_exe = bw
         .get("rbw_executable_path")
         .cloned()
         .unwrap_or_default();
     if !rbw_exe.is_empty() {
         cfg.rbw_exe = rbw_exe;
-    } else if !legacy_exe.is_empty() {
-        cfg.rbw_exe = legacy_exe;
     }
     cfg.rbw_profile = bw.get("rbw_profile").cloned().unwrap_or_default();
     cfg.clipboard_clear_seconds = get_u64(bw, "clipboard_clear_seconds", 30);
@@ -223,13 +203,9 @@ pub fn load() -> Config {
             },
             length: get_u32(p, "length", 16),
             words: get_u32(p, "words", 3),
-            uppercase: get_bool(p, "uppercase", true),
-            lowercase: get_bool(p, "lowercase", true),
-            numbers: get_bool(p, "numbers", true),
-            special: get_bool(p, "special", false),
-            separator: p.get("separator").cloned().unwrap_or_else(|| "-".into()),
-            capitalize: get_bool(p, "capitalize", false),
-            include_number: get_bool(p, "include_number", false),
+            symbols: get_bool(p, "symbols", true),
+            numbers_only: get_bool(p, "numbers_only", false),
+            nonconfusables: get_bool(p, "nonconfusables", false),
         });
     }
     cfg

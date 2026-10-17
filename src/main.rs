@@ -1,19 +1,18 @@
 //! krunner-rustwarden: a KRunner D-Bus runner for Bitwarden, backed by rbw.
 //!
-//! This is the Rust implementation of the ccarpo/krunner-bitwarden runner
-//! (Python, fork branch work/rbw-backend). It exposes the same
-//! org.kde.krunner1 D-Bus interface under the same bus name, reads the
-//! same config file, and implements the same behaviour:
+//! A single compiled binary with no interpreter and no python-dbus /
+//! PyGObject runtime dependencies (D-Bus is zbus, pure Rust). It exposes
+//! the org.kde.krunner1 D-Bus interface under the bus name
+//! org.kde.krunner.bitwarden and provides:
 //!
 //!   * search the vault as you type (multi-token narrowing)
 //!   * copy password (default), copy username, copy TOTP, open URL
 //!   * lock / unlock / sync / stop-agent matches
 //!   * password generation from configurable presets (printed, not saved)
 //!
-//! The differences from the Python version are the point of this port:
-//! no interpreter and no python-dbus / PyGObject runtime dependencies
-//! (D-Bus is zbus, pure Rust), and clipboard access goes through Klipper
-//! first instead of straight to wl-copy / xclip.
+//! Secret copies own a Wayland selection carrying KDE's
+//! x-kde-passwordManagerHint where possible, so Klipper keeps them out
+//! of its history; see clipboard.rs and selection.rs for the fallbacks.
 
 mod clipboard;
 mod config;
@@ -144,21 +143,20 @@ impl Runner {
 
     fn preset_summary(preset: &Preset) -> String {
         match preset.kind {
-            // rbw diceware: separator/capitalize/include_number unsupported
             PresetKind::Passphrase => format!("{} words, diceware", preset.words),
             PresetKind::Password => {
                 let mut parts = vec![format!("{} chars", preset.length)];
-                if preset.uppercase {
-                    parts.push("upper".into());
-                }
-                if preset.lowercase {
-                    parts.push("lower".into());
-                }
-                if preset.numbers {
-                    parts.push("numbers".into());
-                }
-                if preset.special {
-                    parts.push("special".into());
+                if preset.numbers_only {
+                    parts.push("numbers only".into());
+                } else {
+                    if preset.symbols {
+                        parts.push("symbols".into());
+                    } else {
+                        parts.push("no symbols".into());
+                    }
+                    if preset.nonconfusables {
+                        parts.push("nonconfusables".into());
+                    }
                 }
                 parts.join(" · ")
             }
@@ -191,8 +189,8 @@ impl Runner {
         }
     }
 
-    /// The generate match ID embeds the preset as JSON (same scheme as the
-    /// Python version). Rebuild a Preset from it.
+    /// The generate match ID embeds the preset as JSON. Rebuild a Preset
+    /// from it.
     fn preset_from_json(&self, v: &serde_json::Value) -> Option<Preset> {
         let label = v.get("label")?.as_str()?.to_string();
         // Prefer the live preset from config; fall back to the JSON fields
@@ -211,17 +209,9 @@ impl Runner {
             kind,
             length: n("length", 16),
             words: n("words", 3),
-            uppercase: b("uppercase", true),
-            lowercase: b("lowercase", true),
-            numbers: b("numbers", true),
-            special: b("special", false),
-            separator: v
-                .get("separator")
-                .and_then(|s| s.as_str())
-                .unwrap_or("-")
-                .to_string(),
-            capitalize: b("capitalize", false),
-            include_number: b("include_number", false),
+            symbols: b("symbols", true),
+            numbers_only: b("numbers_only", false),
+            nonconfusables: b("nonconfusables", false),
         })
     }
 
@@ -231,13 +221,9 @@ impl Runner {
             "type": match preset.kind { PresetKind::Passphrase => "passphrase", PresetKind::Password => "password" },
             "length": preset.length,
             "words": preset.words,
-            "uppercase": preset.uppercase,
-            "lowercase": preset.lowercase,
-            "numbers": preset.numbers,
-            "special": preset.special,
-            "separator": preset.separator,
-            "capitalize": preset.capitalize,
-            "include_number": preset.include_number,
+            "symbols": preset.symbols,
+            "numbers_only": preset.numbers_only,
+            "nonconfusables": preset.nonconfusables,
         })
         .to_string()
     }
