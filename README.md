@@ -3,14 +3,6 @@
 A KRunner plugin for Bitwarden, written in Rust, backed by
 [rbw](https://github.com/doy/rbw) instead of the official `bw` CLI.
 
-It is a from-scratch Rust implementation of the behaviour of
-[ccarpo/krunner-bitwarden](https://github.com/ccarpo/krunner-bitwarden)
-(as patched to an rbw backend on the `work/rbw-backend` branch of
-[mchugh19/krunner-bitwarden](https://github.com/mchugh19/krunner-bitwarden)):
-same D-Bus interface, same bus name, same config file, same features.
-What changes is the runtime footprint: one compiled binary instead of a
-Python interpreter plus dbus-python and PyGObject.
-
 ## Why Rust
 
 The Python runner depends on the system Python stack matching what the
@@ -162,3 +154,9 @@ rbw's generator has fewer knobs than the config format (which comes from
 ## License
 
 MIT
+
+## Prior art
+
+* [ccarpo/krunner-bitwarden](https://github.com/ccarpo/krunner-bitwarden):
+  a KRunner plugin for Bitwarden written in Python, backed by the
+  official `bw` CLI.
