@@ -31,7 +31,7 @@ use rbw::{Rbw, VaultState};
 
 const BUS_NAME: &str = "org.kde.krunner.bitwarden";
 const OBJ_PATH: &str = "/runner";
-const ICON: &str = "password-vault";
+const ICON: &str = "dialog-password";
 
 // categoryRelevance values, mirroring KRunner::QueryMatch::CategoryRelevance
 const CATEGORY_LOWEST: i32 = 0;
