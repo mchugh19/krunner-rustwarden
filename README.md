@@ -5,12 +5,14 @@ A KRunner plugin for Bitwarden, written in Rust, backed by
 
 ## Why Rust
 
-The Python runner depends on the system Python stack matching what the
-plugin was installed against. On an image-based system (Fedora Atomic /
-Aurora and friends) that stack rebases underneath you, and layering the
-packages is exactly what you are trying to avoid. This binary's only
-dynamic dependencies are the C library and the usual system basics (run
-`ldd` on it and see). D-Bus goes through zbus, which is pure Rust.
+A plugin that hooks your password vault should not depend on a language
+runtime staying put. An interpreted plugin breaks when the system
+interpreter stack rebases underneath it, which on an image-based system
+(Fedora Atomic / Aurora and friends) happens routinely, and layering
+the packages to pin it is exactly what you are trying to avoid. This
+binary's only dynamic dependencies are the C library and the usual
+system basics (run `ldd` on it and see). D-Bus goes through zbus, which
+is pure Rust.
 
 ## Requirements
 
@@ -65,11 +67,14 @@ passwords. While the vault is locked, typing in KRunner does not call
 ```sh
 cargo build --release
 ./install.sh
+systemctl --user start krunner-rustwarden
 ```
 
 `install.sh` installs the binary, the KRunner desktop file and the
 systemd user unit, writes a default config if none exists, and enables
-the service.
+the service. The last command starts it; after an upgrade, restart it
+instead (`systemctl --user restart krunner-rustwarden`) so the new
+binary is picked up.
 
 Two things worth checking on a fresh install:
 
@@ -91,7 +96,7 @@ The config file is left in place.
 
 ## Configuration
 
-`~/.config/krunner-bitwarden/config.ini`:
+`~/.config/krunner-rustwarden/config.ini`:
 
 ```ini
 [bitwarden]
@@ -102,35 +107,22 @@ clipboard_clear_seconds = 30
 [generator.default]
 type = password
 length = 16
-uppercase = true
-lowercase = true
-numbers = true
-special = false
+symbols = false
 ```
 
 * `rbw_executable_path`: full path to rbw. Empty means resolve from
-  PATH. (The old `bw_executable_path` key is still honoured as an alias,
-  and an old literal value of `bw` is treated as unset.)
+  PATH.
 * `rbw_profile`: passed to every rbw call as `RBW_PROFILE`.
 * `clipboard_clear_seconds`: delay before a copied secret is cleared
   from the clipboard (only when the clipboard still holds that secret).
   0 disables.
-* `[generator.<label>]`: one KRunner match per preset.
-
-### Generator preset mapping (rbw limits)
-
-rbw's generator has fewer knobs than the config format (which comes from
-`bw generate`). The mapping is:
-
-* passphrase preset: `rbw generate <words> --diceware`. The `separator`,
-  `capitalize` and `include_number` options have no diceware equivalent
-  in rbw and are ignored.
-* numbers-only preset (numbers on, upper/lower/special off):
-  `rbw generate <length> --only-numbers`.
-* `special = false`: `--no-symbols`.
-* `special = true`: no flag (rbw includes symbols by default).
-* The `uppercase` / `lowercase` toggles have no rbw flag and are ignored,
-  apart from their role in the numbers-only detection above.
+* `[generator.<label>]`: one KRunner match per preset. Presets are
+  written in rbw's own terms, so every key takes effect:
+  * `type = password`: `length` characters. `symbols = false` passes
+    `--no-symbols` (symbols are included by default), `numbers_only =
+    true` passes `--only-numbers`, and `nonconfusables = true` passes
+    `--nonconfusables`.
+  * `type = passphrase`: `words` diceware words (`--diceware`).
 
 ## Security notes
 
