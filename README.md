@@ -77,6 +77,11 @@ match:
 | Lock, Unlock, Sync, Stop agent | Run the command | none |
 | Status line | nothing, it is informational | none |
 
+Open URL is offered only when one of the entry's URIs is an https
+address, and it opens that address. Other URIs are ignored,
+including the `androidapp://` links Bitwarden stores for Android
+autofill.
+
 Secrets (passwords, TOTP codes, generated passwords) are copied
 with KDE's password hint attached, so Klipper keeps them out of its
 history, and they are cleared from the clipboard after the
