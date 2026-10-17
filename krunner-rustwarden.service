@@ -6,7 +6,7 @@ PartOf=graphical-session.target
 [Service]
 Type=dbus
 BusName=org.kde.krunner.bitwarden
-ExecStart=%h/.local/share/krunner-rbw/krunner-rbw
+ExecStart=%h/.local/share/krunner-rustwarden/krunner-rustwarden
 Restart=on-failure
 RestartSec=2
 

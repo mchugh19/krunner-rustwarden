@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Install krunner-rbw (Rust runner) for the current user.
+# Install krunner-rustwarden (Rust runner) for the current user.
 #
 # Installs:
-#   ~/.local/share/krunner-rbw/krunner-rbw                 (binary)
+#   ~/.local/share/krunner-rustwarden/krunner-rustwarden                 (binary)
 #   ~/.local/share/krunner/dbusplugins/bitwarden.desktop   (runner registration)
-#   ~/.config/systemd/user/krunner-rbw.service
+#   ~/.config/systemd/user/krunner-rustwarden.service
 #   ~/.config/krunner-bitwarden/config.ini                 (only if missing)
 set -euo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_SRC="$SRC_DIR/target/release/krunner-rbw"
+BIN_SRC="$SRC_DIR/target/release/krunner-rustwarden"
 
-BIN_DIR="$HOME/.local/share/krunner-rbw"
+BIN_DIR="$HOME/.local/share/krunner-rustwarden"
 PLUGIN_DIR="$HOME/.local/share/krunner/dbusplugins"
 UNIT_DIR="$HOME/.config/systemd/user"
 CONFIG_DIR="$HOME/.config/krunner-bitwarden"
@@ -30,9 +30,9 @@ fi
 
 mkdir -p "$BIN_DIR" "$PLUGIN_DIR" "$UNIT_DIR" "$CONFIG_DIR"
 
-install -m 0755 "$BIN_SRC" "$BIN_DIR/krunner-rbw"
-install -m 0644 "$SRC_DIR/krunner-rbw.desktop" "$PLUGIN_DIR/bitwarden.desktop"
-install -m 0644 "$SRC_DIR/krunner-rbw.service" "$UNIT_DIR/krunner-rbw.service"
+install -m 0755 "$BIN_SRC" "$BIN_DIR/krunner-rustwarden"
+install -m 0644 "$SRC_DIR/krunner-rustwarden.desktop" "$PLUGIN_DIR/bitwarden.desktop"
+install -m 0644 "$SRC_DIR/krunner-rustwarden.service" "$UNIT_DIR/krunner-rustwarden.service"
 
 # The Python version used the same bus name. If its service is still
 # enabled, it will fight this one for org.kde.krunner.bitwarden.
@@ -50,7 +50,7 @@ else
 fi
 
 systemctl --user daemon-reload
-systemctl --user enable --now krunner-rbw.service
+systemctl --user enable --now krunner-rustwarden.service
 
 echo
 echo "Installed. KRunner picks up D-Bus runners automatically; if Bitwarden"

@@ -1,5 +1,5 @@
 [package]
-name = "krunner-rbw"
+name = "krunner-rustwarden"
 version = "0.1.0"
 edition = "2021"
 description = "KRunner D-Bus runner for Bitwarden, backed by the rbw CLI"

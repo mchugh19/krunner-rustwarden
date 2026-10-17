@@ -360,7 +360,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "krunner-rbw"
+name = "krunner-rustwarden"
 version = "0.1.0"
 dependencies = [
  "serde",

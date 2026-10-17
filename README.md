@@ -1,4 +1,4 @@
-# krunner-rbw
+# krunner-rustwarden
 
 A KRunner plugin for Bitwarden, written in Rust, backed by
 [rbw](https://github.com/doy/rbw) instead of the official `bw` CLI.

@@ -1,4 +1,4 @@
-//! Configuration for krunner-rbw.
+//! Configuration for krunner-rustwarden.
 //!
 //! The config file is shared with the Python (bw-serve/rbw) version of this
 //! runner: `~/.config/krunner-bitwarden/config.ini`. Installing either

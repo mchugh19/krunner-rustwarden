@@ -1,4 +1,4 @@
-//! krunner-rbw: a KRunner D-Bus runner for Bitwarden, backed by rbw.
+//! krunner-rustwarden: a KRunner D-Bus runner for Bitwarden, backed by rbw.
 //!
 //! This is the Rust implementation of the ccarpo/krunner-bitwarden runner
 //! (Python, fork branch work/rbw-backend). It exposes the same
@@ -421,7 +421,7 @@ fn main() -> zbus::Result<()> {
         .replace_existing_names(true)
         .serve_at(OBJ_PATH, runner)?
         .build()?;
-    eprintln!("[bitwarden] KRunner Bitwarden runner started (krunner-rbw, rbw backend)");
+    eprintln!("[bitwarden] KRunner Bitwarden runner started (krunner-rustwarden, rbw backend)");
     // Park forever; systemd stops us with SIGTERM.
     loop {
         std::thread::park();
