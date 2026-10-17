@@ -1,6 +1,6 @@
 [package]
 name = "krunner-rustwarden"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "KRunner D-Bus runner for Bitwarden, backed by the rbw CLI"
 license = "MIT"

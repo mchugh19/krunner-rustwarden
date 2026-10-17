@@ -126,17 +126,24 @@ symbols = false
 * `clipboard_clear_seconds`: delay before a copied secret is cleared
   from the clipboard (only when the clipboard still holds that secret).
   0 disables.
-* `webvault_action`: when `true`, entry matches gain an "Open in Web
-  Vault" action that opens `itemId` deep links in the web vault. The
-  vault address is resolved from rbw's own configuration at action
-  time (`ui_url` if set, otherwise `base_url`, otherwise the Bitwarden
-  cloud vault), so self-hosted and EU accounts land in the right vault
-  with nothing extra to configure here.
+* `webvault_action`: when `true`, login entry matches gain an "Open
+  in Web Vault" action that opens `itemId` deep links in the web
+  vault. The vault address is resolved from rbw's own configuration
+  at action time (`ui_url` if set, otherwise `base_url`, otherwise
+  the Bitwarden cloud vault), so self-hosted and EU accounts land in
+  the right vault with nothing extra to configure here.
 * `show_secure_notes`: when `true`, secure note entries appear in
   search results alongside logins. Running one opens the entry in the
   web vault, using the same address resolution as the web vault
-  action, whether or not that action is enabled. Note text is never
-  copied and never part of the search data.
+  action, whether or not that action is enabled; it is also the
+  note's only action, since a note has no password, username, TOTP
+  or URL to copy or open. Note text is never copied and never part
+  of the search data.
+
+Actions are assigned per match: logins offer the copy and open
+actions (plus the web vault action when enabled), notes offer only
+the web vault, and the management and generator matches offer no
+actions at all, since Enter alone does their job.
 * `[generator.<label>]`: one KRunner match per preset. Presets are
   written in rbw's own terms, so every key takes effect:
   * `type = password`: `length` characters. `symbols = false` passes
