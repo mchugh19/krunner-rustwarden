@@ -6,6 +6,7 @@ Comment=Search Bitwarden vault via rbw and copy credentials
 Icon=password-vault
 X-KDE-PluginInfo-Name=bitwarden
 X-KDE-PluginInfo-Version=0.2.0
+X-KDE-PluginInfo-EnabledByDefault=true
 X-Plasma-API=DBus
 X-Plasma-DBusRunner-Service=org.kde.krunner.bitwarden
 X-Plasma-DBusRunner-Path=/runner

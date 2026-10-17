@@ -81,6 +81,16 @@ the service. Do not run this and the Python version at the same time:
 both own the bus name `org.kde.krunner.bitwarden`. `install.sh` warns
 if the Python service is enabled.
 
+Two things worth checking on a fresh install:
+
+* In System Settings → Search → Plasma Search, make sure
+  "Bitwarden (rbw)" is ticked. A newly installed runner can start
+  unticked, in which case KRunner never queries it.
+* The systemd user service runs with a minimal PATH. If the runner's
+  status match says "rbw not found", set `rbw_executable_path` in the
+  config to the full path of the `rbw` binary (`which rbw` in a shell)
+  and restart the service.
+
 ## Uninstall
 
 ```sh
