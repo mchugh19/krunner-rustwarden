@@ -317,12 +317,12 @@ impl Runner {
             (
                 ACTION_OPEN_URL.to_string(),
                 "Open URL".to_string(),
-                "internet-web-browser".to_string(),
+                "go-jump".to_string(),
             ),
             (
                 ACTION_OPEN_WEBVAULT.to_string(),
                 "Open in Web Vault".to_string(),
-                "internet-web-browser".to_string(),
+                "security-high".to_string(),
             ),
         ]
     }
