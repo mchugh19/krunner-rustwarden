@@ -46,6 +46,11 @@ is pure Rust.
   Sync Bitwarden Vault, Stop rbw Agent, plus a status line.
 * Password generation from presets in the config file. The generated
   password is copied to the clipboard; it is never saved to the vault.
+* Optional, both off by default (see Configuration): an "Open in Web
+  Vault" action on each entry, which opens the entry's page in the web
+  vault, the place to read an entry's notes; and secure note entries
+  among the search results, where running a note entry copies its text
+  with the same secret handling as a password.
 
 ## How it works
 
@@ -57,7 +62,9 @@ A systemd user service owns the process.
 
 All vault access is short-lived `rbw` subprocess calls: `rbw list --raw`
 for search, `rbw get` / `rbw code` for secrets at action time, `rbw lock`,
-`rbw unlock`, `rbw sync`, `rbw stop-agent`. Search results are matched
+`rbw unlock`, `rbw sync`, `rbw stop-agent`, and `rbw config show` when
+the web vault action runs, to take the vault address from rbw's own
+`ui_url` / `base_url` settings. Search results are matched
 locally; the runner caches only names, usernames and URIs, never
 passwords. While the vault is locked, typing in KRunner does not call
 `rbw list` at all, so it cannot pop a pinentry prompt per keystroke.
@@ -103,6 +110,8 @@ The config file is left in place.
 rbw_executable_path =
 rbw_profile =
 clipboard_clear_seconds = 30
+webvault_action = false
+show_secure_notes = false
 
 [generator.default]
 type = password
@@ -116,6 +125,15 @@ symbols = false
 * `clipboard_clear_seconds`: delay before a copied secret is cleared
   from the clipboard (only when the clipboard still holds that secret).
   0 disables.
+* `webvault_action`: when `true`, entry matches gain an "Open in Web
+  Vault" action that opens `itemId` deep links in the web vault. The
+  vault address is resolved from rbw's own configuration at action
+  time (`ui_url` if set, otherwise `base_url`, otherwise the Bitwarden
+  cloud vault), so self-hosted and EU accounts land in the right vault
+  with nothing extra to configure here.
+* `show_secure_notes`: when `true`, secure note entries appear in
+  search results alongside logins. Running one copies the note text,
+  fetched from rbw at that moment; it is never part of the search data.
 * `[generator.<label>]`: one KRunner match per preset. Presets are
   written in rbw's own terms, so every key takes effect:
   * `type = password`: `length` characters. `symbols = false` passes
