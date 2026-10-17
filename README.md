@@ -53,6 +53,62 @@ is pure Rust.
   web vault too. Note text is never copied: it is free-form, can be
   long and can carry many fields, so the clipboard is a poor fit.
 
+## Usage
+
+Open KRunner (Alt+Space by default) and type. There is no trigger
+prefix to remember.
+
+### Finding and using an entry
+
+Type at least three characters. An entry matches when the text
+appears in its name, its username, or any of its URIs. With several
+words, every word must match somewhere, so `bank example` finds the
+entry named "Bank of Ireland" through its `bank.example.ie` address.
+Matching is case-insensitive.
+
+What Enter and the match's action buttons do depends on the kind of
+match:
+
+| Match | Enter | Actions |
+| --- | --- | --- |
+| Login entry | Copy password | Copy Username, Copy TOTP, Open URL; plus Open in Web Vault when `webvault_action` is on |
+| Secure note entry (with `show_secure_notes` on) | Open in Web Vault | Open in Web Vault |
+| Generator preset | Copy the generated password | none |
+| Lock, Unlock, Sync, Stop agent | Run the command | none |
+| Status line | nothing, it is informational | none |
+
+Secrets (passwords, TOTP codes, generated passwords) are copied
+with KDE's password hint attached, so Klipper keeps them out of its
+history, and they are cleared from the clipboard after the
+configured delay while they are still the clipboard content.
+Username copies are ordinary clipboard text.
+
+### Vault commands
+
+* `bitwarden`: the status line, plus Lock and Sync while the vault
+  is unlocked. The status line also appears on an empty query.
+* `lock`: Lock Bitwarden (only while unlocked).
+* `unlock`: Unlock Bitwarden (only while locked). rbw-agent presents
+  the pinentry prompt; this plugin never sees the master password.
+* `sync`: Sync Bitwarden Vault, refreshing the local vault copy.
+* `stop` or `agent`: Stop rbw Agent, which also locks the vault.
+
+### Generating a password
+
+Type `generate`, `password` or `passphrase`. There is one match per
+preset defined in the config file, and its subtext summarizes the
+preset (length and symbols for passwords, word count for
+passphrases). Enter copies the generated password to the clipboard.
+It is never saved to the vault. Typing `password` also offers the
+Unlock match while the vault is locked.
+
+### While the vault is locked
+
+Search does not run: no entry results appear, and typing in KRunner
+never triggers a pinentry prompt per keystroke. The status line
+reports LOCKED and the Unlock match is offered. After unlocking,
+search works until rbw locks the vault again under its own settings.
+
 ## How it works
 
 The binary is a D-Bus activated runner. The desktop file in
