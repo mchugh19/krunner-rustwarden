@@ -49,8 +49,9 @@ is pure Rust.
 * Optional, both off by default (see Configuration): an "Open in Web
   Vault" action on each entry, which opens the entry's page in the web
   vault, the place to read an entry's notes; and secure note entries
-  among the search results, where running a note entry copies its text
-  with the same secret handling as a password.
+  among the search results, where running a note entry opens it in the
+  web vault too. Note text is never copied: it is free-form, can be
+  long and can carry many fields, so the clipboard is a poor fit.
 
 ## How it works
 
@@ -132,8 +133,10 @@ symbols = false
   cloud vault), so self-hosted and EU accounts land in the right vault
   with nothing extra to configure here.
 * `show_secure_notes`: when `true`, secure note entries appear in
-  search results alongside logins. Running one copies the note text,
-  fetched from rbw at that moment; it is never part of the search data.
+  search results alongside logins. Running one opens the entry in the
+  web vault, using the same address resolution as the web vault
+  action, whether or not that action is enabled. Note text is never
+  copied and never part of the search data.
 * `[generator.<label>]`: one KRunner match per preset. Presets are
   written in rbw's own terms, so every key takes effect:
   * `type = password`: `length` characters. `symbols = false` passes
