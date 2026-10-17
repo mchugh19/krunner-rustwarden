@@ -63,10 +63,17 @@ pub struct Runner {
     cache: Mutex<HashMap<String, CachedItem>>,
 }
 
-fn props(subtext: &str) -> HashMap<String, Value<'static>> {
+fn props(subtext: &str, actions: Option<Vec<String>>) -> HashMap<String, Value<'static>> {
     let mut m = HashMap::new();
     m.insert("subtext".to_string(), Value::from(subtext.to_string()));
     m.insert("category".to_string(), Value::from("Bitwarden".to_string()));
+    // The org.kde.krunner1 protocol's per-match "actions" property:
+    // when present, KRunner offers only the listed action ids on this
+    // match (an empty list means no actions); when absent, the match
+    // gets the runner's full action list.
+    if let Some(actions) = actions {
+        m.insert("actions".to_string(), Value::from(actions));
+    }
     m
 }
 
@@ -76,6 +83,7 @@ fn make_match(
     category_relevance: i32,
     relevance: f64,
     subtext: &str,
+    actions: Option<Vec<String>>,
 ) -> MatchResult {
     (
         id.to_string(),
@@ -83,7 +91,7 @@ fn make_match(
         ICON.to_string(),
         category_relevance,
         relevance,
-        props(subtext),
+        props(subtext, actions),
     )
 }
 
@@ -152,12 +160,32 @@ impl Runner {
             } else {
                 &item.username
             };
+            // Per-match actions. A note has no password, username,
+            // TOTP or URL to offer, so it always gets exactly the web
+            // vault action, regardless of the webvault_action flag.
+            // A login gets the copy/open actions, plus the web vault
+            // only when that flag is on. Without the property a match
+            // would inherit every advertised action.
+            let actions = Some(if item.is_note {
+                vec![ACTION_OPEN_WEBVAULT.to_string()]
+            } else {
+                let mut ids = vec![
+                    ACTION_COPY_USERNAME.to_string(),
+                    ACTION_COPY_TOTP.to_string(),
+                    ACTION_OPEN_URL.to_string(),
+                ];
+                if self.cfg.webvault_action {
+                    ids.push(ACTION_OPEN_WEBVAULT.to_string());
+                }
+                ids
+            });
             matches.push(make_match(
                 &item.id,
                 &item.name,
                 CATEGORY_HIGHEST,
                 relevance,
                 subtext,
+                actions,
             ));
         }
         matches
@@ -255,7 +283,13 @@ impl Runner {
 impl Runner {
     #[zbus(name = "Actions")]
     fn actions(&self) -> Vec<ActionResult> {
-        let mut actions = vec![
+        // The full action vocabulary is always advertised. Which of them
+        // a given match actually offers is decided per match through
+        // the "actions" property (see props): logins get the copy/open
+        // actions plus the web vault only when webvault_action is on,
+        // notes always get exactly the web vault, and command matches
+        // get none.
+        vec![
             (
                 ACTION_COPY_USERNAME.to_string(),
                 "Copy Username".to_string(),
@@ -271,15 +305,12 @@ impl Runner {
                 "Open URL".to_string(),
                 "internet-web-browser".to_string(),
             ),
-        ];
-        if self.cfg.webvault_action {
-            actions.push((
+            (
                 ACTION_OPEN_WEBVAULT.to_string(),
                 "Open in Web Vault".to_string(),
                 "internet-web-browser".to_string(),
-            ));
-        }
-        actions
+            ),
+        ]
     }
 
     #[zbus(name = "Match")]
@@ -307,6 +338,7 @@ impl Runner {
                 CATEGORY_LOWEST,
                 0.5,
                 desc,
+                Some(Vec::new()),
             ));
         }
 
@@ -318,6 +350,7 @@ impl Runner {
                 CATEGORY_MODERATE,
                 0.6,
                 "Lock the vault immediately (rbw lock)",
+                Some(Vec::new()),
             ));
         }
 
@@ -333,6 +366,7 @@ impl Runner {
                 CATEGORY_HIGH,
                 0.9,
                 "Press Enter to unlock (rbw pinentry prompt)",
+                Some(Vec::new()),
             ));
         }
 
@@ -344,6 +378,7 @@ impl Runner {
                 CATEGORY_LOWEST,
                 0.4,
                 "Refresh the local vault copy (rbw sync)",
+                Some(Vec::new()),
             ));
         }
 
@@ -355,6 +390,7 @@ impl Runner {
                 CATEGORY_LOWEST,
                 0.4,
                 "Stop rbw-agent, which also locks the vault",
+                Some(Vec::new()),
             ));
         }
 
@@ -368,6 +404,7 @@ impl Runner {
                     CATEGORY_MODERATE,
                     0.5,
                     &summary,
+                    Some(Vec::new()),
                 ));
             }
         }
