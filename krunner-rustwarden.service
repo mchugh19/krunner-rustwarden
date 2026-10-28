@@ -1,6 +1,11 @@
 [Unit]
 Description=KRunner Bitwarden runner (rbw backend, Rust)
-After=dbus.service
+# The runner spawns rbw, whose agent prompts via pinentry and needs the
+# session's DISPLAY / WAYLAND_DISPLAY. Those reach the systemd user
+# manager only when the graphical session starts, so the runner must not
+# start before it: an earlier start snapshots an environment without
+# them, and every rbw-agent started from here then fails to prompt.
+After=dbus.service graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
@@ -11,4 +16,4 @@ Restart=on-failure
 RestartSec=2
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
