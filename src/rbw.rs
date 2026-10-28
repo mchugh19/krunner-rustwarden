@@ -319,17 +319,37 @@ impl Rbw {
 
     pub fn unlock(&self) {
         // Non-blocking: rbw-agent presents the pinentry prompt. Blocking the
-        // D-Bus Run() call on it would freeze KRunner's view of this runner.
+        // D-Bus Run() call on it would freeze KRunner's view of this runner,
+        // so a reaper thread waits for the child instead. The child's stderr
+        // is piped to that thread: a failed unlock (for example pinentry
+        // unable to open a display) must land in the journal, not vanish.
         let mut cmd = Command::new(&self.exe);
         cmd.arg("unlock")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            .stderr(Stdio::piped());
         if !self.profile.is_empty() {
             cmd.env("RBW_PROFILE", &self.profile);
         }
         match cmd.spawn() {
-            Ok(_) => {}
+            Ok(mut child) => {
+                std::thread::spawn(move || {
+                    let mut err = String::new();
+                    if let Some(mut pipe) = child.stderr.take() {
+                        let _ = pipe.read_to_string(&mut err);
+                    }
+                    match child.wait() {
+                        Ok(status) if status.success() => {
+                            eprintln!("[bitwarden] Vault unlocked");
+                        }
+                        Ok(status) => {
+                            let first = err.lines().next().unwrap_or_default();
+                            eprintln!("[bitwarden] rbw unlock failed ({status}): {first}");
+                        }
+                        Err(e) => eprintln!("[bitwarden] rbw unlock wait error: {e}"),
+                    }
+                });
+            }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 self.not_found.store(true, Ordering::Relaxed);
                 eprintln!("[bitwarden] rbw executable not found: {}", self.exe);
